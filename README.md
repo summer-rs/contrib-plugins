@@ -1,7 +1,25 @@
+- [summer-rs examples](#summer-rs-examples)
 - [utoipa](#spring-utoipa)
   [![crates.io](https://img.shields.io/crates/v/spring-utoipa.svg)](https://crates.io/crates/spring-utoipa)
   [![Documentation](https://docs.rs/spring-utoipa/badge.svg)](https://docs.rs/spring-utoipa):
   Utoipa offers compile time generated OpenAPI documentation for Rust.
+
+## summer-rs examples
+
+These crates sit next to a [summer-rs](https://github.com/summer-rs/summer-rs) checkout (sibling directory `summer-rs/`). They are **not** members of the `summer-rs` Cargo workspace; each `Cargo.toml` pins versions and uses `path` into `../summer-rs/...`.
+
+Examples for contrib plugins live next to each crate under `<crate>/examples/`:
+
+- [`summer-opendal/examples/opendal-example`](summer-opendal/examples/opendal-example) — run from `summer-opendal/`: `cargo run --example opendal-example --features services-fs`
+- [`summer-pubsub/examples/pubsub-example`](summer-pubsub/examples/pubsub-example) — run from `summer-pubsub/`: `cargo run --example pubsub-example`
+- [`summer-sa-token/examples/sa-token-example`](summer-sa-token/examples/sa-token-example) — run from `summer-sa-token/`: `cargo run --example sa-token-example`
+
+```shell
+# Layout: parent/summer-rs  and  parent/contrib-plugins
+cd contrib-plugins/summer-opendal && cargo run --example opendal-example --features services-fs
+```
+
+For `summer-rs` workspace examples that reference contrib (e.g. `plugin-example`), clone this repo under `summer-rs/contrib-plugins`, or symlink `summer-rs/contrib-plugins` → `../contrib-plugins`.
 
 ## Spring utoipa
 
