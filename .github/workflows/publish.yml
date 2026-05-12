@@ -1,0 +1,60 @@
+# Publish a single crate from this repo to crates.io.
+#
+# Prerequisites:
+#   1. Repository secret `CRATES_IO_TOKEN` — an API token from https://crates.io/settings/tokens
+#   2. Your crates.io account must be an owner of each package you publish.
+#   3. Publish order: release `summer-ext-macros` before `summer-pubsub` / `summer-sa-token`
+#      (they depend on it via the version field in Cargo.toml).
+
+name: Publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      crate:
+        description: "Directory name of the crate to publish"
+        required: true
+        type: choice
+        options:
+          - summer-ext-macros
+          - summer-pubsub
+          - summer-sa-token
+          - summer-opendal
+          - spring-utoipa
+      dry_run:
+        description: "If true, only run cargo publish --dry-run"
+        required: true
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: cargo publish (${{ inputs.crate }})
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Require CRATES_IO_TOKEN for real publish
+        if: ${{ !inputs.dry_run }}
+        run: |
+          if [ -z "${{ secrets.CRATES_IO_TOKEN }}" ]; then
+            echo "::error::Set repository secret CRATES_IO_TOKEN (crates.io API token)."
+            exit 1
+          fi
+
+      - name: cargo publish --dry-run
+        if: ${{ inputs.dry_run }}
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
+        run: cargo publish --manifest-path ${{ inputs.crate }}/Cargo.toml --dry-run
+
+      - name: cargo publish
+        if: ${{ !inputs.dry_run }}
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
+        run: cargo publish --manifest-path ${{ inputs.crate }}/Cargo.toml

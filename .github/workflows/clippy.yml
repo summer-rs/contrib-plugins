@@ -1,0 +1,39 @@
+# Run Clippy on every pull request (and pushes to the default branch).
+
+name: Clippy
+
+on:
+  pull_request:
+  push:
+    branches: [master, main]
+
+concurrency:
+  group: clippy-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  clippy:
+    name: clippy (${{ matrix.crate }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        crate:
+          - summer-ext-macros
+          - summer-pubsub
+          - summer-sa-token
+          - summer-opendal
+          - spring-utoipa
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - name: cargo clippy
+        run: cargo clippy --manifest-path ${{ matrix.crate }}/Cargo.toml --all-targets -- -D warnings

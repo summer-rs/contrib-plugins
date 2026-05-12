@@ -1,0 +1,18 @@
+[package]
+name = "summer-ext-macros"
+description = "Proc-macros for summer-rs contrib plugins (GCP Pub/Sub, Sa-Token)"
+version = "0.1.0"
+categories = ["development-tools::procedural-macro-helpers"]
+keywords = ["proc-macro", "summer", "pubsub", "sa-token"]
+edition = "2021"
+license = "MIT"
+authors = ["holmofy"]
+repository = "https://github.com/spring-rs/contrib-plugins"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+proc-macro2 = "1.0"
+quote = "1.0"
+syn = { version = "2.0", features = ["full", "extra-traits"] }

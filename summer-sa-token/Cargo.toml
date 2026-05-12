@@ -1,0 +1,49 @@
+[package]
+name = "summer-sa-token"
+description = "Sa-Token authentication and authorization plugin for summer-rs"
+version = "0.5.3"
+categories = ["authentication", "web-programming"]
+keywords = ["authentication", "authorization", "sa-token", "summer", "security"]
+edition = "2021"
+license = "MIT"
+authors = ["holmofy"]
+repository = "https://github.com/spring-rs/contrib-plugins"
+
+[dependencies]
+summer = "0.5"
+summer-web = { version = "0.5", optional = true }
+summer-ext-macros = { path = "../summer-ext-macros", version = "0.1" }
+summer-redis = { version = "0.5", optional = true }
+sa-token-plugin-axum = "0.1.15"
+sa-token-core = "0.1.15"
+sa-token-adapter = "0.1.15"
+sa-token-storage-memory = { version = "0.1.15", optional = true }
+serde = "1.0"
+anyhow = "1.0"
+tracing = "0.1"
+schemars = "1.1"
+
+[features]
+default = ["memory", "with-web"]
+memory = ["sa-token-storage-memory"]
+with-web = ["summer-web"]
+with-summer-redis = ["summer-redis"]
+openapi = ["summer-web/openapi"]
+
+[dev-dependencies]
+tower = "0.5"
+toml = "0.9"
+tokio = { version = "1.47", features = ["rt", "macros", "signal"] }
+summer-sea-orm = { version = "0.5.0-rc.1", features = ["postgres"] }
+sea-orm = { version = "2.0.0-rc.37", features = [
+    "macros",
+    "sqlx-postgres",
+    "runtime-tokio-native-tls",
+] }
+async-trait = "0.1"
+anyhow = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+[[example]]
+name = "sa-token-example"
