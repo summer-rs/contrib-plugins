@@ -21,25 +21,18 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - crate: summer-ext-macros
-            toolchain: stable
-          - crate: summer-pubsub
-            toolchain: stable
-          - crate: summer-sa-token
-            toolchain: stable
-          - crate: summer-opendal
-            toolchain: stable
-          # spring-utoipa uses `#![feature(type_alias_impl_trait)]` — needs nightly for clippy.
-          - crate: spring-utoipa
-            toolchain: nightly
+        crate:
+          - summer-ext-macros
+          - summer-pubsub
+          - summer-sa-token
+          - summer-opendal
+          - spring-utoipa
 
     steps:
       - uses: actions/checkout@v4
 
-      - uses: dtolnay/rust-toolchain@master
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: ${{ matrix.toolchain }}
           components: clippy
 
       - name: cargo clippy
