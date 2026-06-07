@@ -3686,9 +3686,9 @@ checksum = "13c2bddecc57b384dee18652358fb23172facb8a2c51ccc10d74c157bdea3292"
 
 [[package]]
 name = "summer"
-version = "0.5.1"
+version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "85ec3ba0b766c600510e6fb056cdb2541247aae0e0fd58c38a63b9d9b9c4342f"
+checksum = "7f79e6932f2a980031445696a577e5cb2f2e8653cf40fcd0ab0c019fd913eb37"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -3708,6 +3708,7 @@ dependencies = [
  "tracing",
  "tracing-appender",
  "tracing-error",
+ "tracing-log",
  "tracing-subscriber",
 ]
 
@@ -3722,9 +3723,9 @@ dependencies = [
 
 [[package]]
 name = "summer-macros"
-version = "0.5.2"
+version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ee489a0aa8a33eab7992acdb96a59334231ef33fc6cc8772a7cae07555aa68c9"
+checksum = "fc0d4dd9175da091b28ba944a9156d8276042fbd9d17fddb53eed3f770e1556c"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3733,7 +3734,7 @@ dependencies = [
 
 [[package]]
 name = "summer-pubsub"
-version = "0.5.1"
+version = "0.7.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -3756,9 +3757,9 @@ dependencies = [
 
 [[package]]
 name = "summer-redis"
-version = "0.5.0"
+version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b33f54fb29153d0472a5d810c703683e424c90f94d8bf4a0d68e49de9770d60e"
+checksum = "322081968a05593120acaec765d3e3498f827be4b45218bbf8b2adcbcd76706e"
 dependencies = [
  "anyhow",
  "redis 1.2.1",
@@ -3771,9 +3772,9 @@ dependencies = [
 
 [[package]]
 name = "summer-sqlx"
-version = "0.5.0"
+version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a2eec4d36f291439c4d8a4d2e64cc7e1eebd05455e6d4f5cae73f9d2561c9339"
+checksum = "a797c532ba7738920712bc17bacbb0ea9244deb10d9a31d2ea49b64325b85852"
 dependencies = [
  "anyhow",
  "schemars 1.2.1",
@@ -3785,9 +3786,9 @@ dependencies = [
 
 [[package]]
 name = "summer-stream"
-version = "0.5.0"
+version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "38e592c11af7d4b52521a9e279fd99cb649e60dc8b1aaa7c2e2c17a179a27509"
+checksum = "96e668be9ac043df72fe67803bce74d4f744a21fcb794a347f9d82feffd39ff2"
 dependencies = [
  "anyhow",
  "inventory",
@@ -3801,9 +3802,9 @@ dependencies = [
 
 [[package]]
 name = "summer-web"
-version = "0.5.0"
+version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "72da85b4da14a82e006057bc1943bd2d3461723e4322854db9a8a37f7d14d0bb"
+checksum = "34d82075b6bf3b5ff9354f8f192fee7b307615f725b5a7cbbf800e51c8c5bef1"
 dependencies = [
  "anyhow",
  "axum",

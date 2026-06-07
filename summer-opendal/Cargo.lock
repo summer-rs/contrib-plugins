@@ -5508,13 +5508,41 @@ dependencies = [
  "serde",
  "serde-toml-merge",
  "serde_json",
- "summer-macros",
+ "summer-macros 0.5.2",
  "thiserror 2.0.18",
  "tokio",
  "toml",
  "tracing",
  "tracing-appender",
  "tracing-error",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "summer"
+version = "0.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7f79e6932f2a980031445696a577e5cb2f2e8653cf40fcd0ab0c019fd913eb37"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "dashmap 6.1.0",
+ "dotenvy",
+ "inventory",
+ "log",
+ "nu-ansi-term",
+ "schemars",
+ "serde",
+ "serde-toml-merge",
+ "serde_json",
+ "summer-macros 0.7.1",
+ "thiserror 2.0.18",
+ "tokio",
+ "toml",
+ "tracing",
+ "tracing-appender",
+ "tracing-error",
+ "tracing-log",
  "tracing-subscriber",
 ]
 
@@ -5530,8 +5558,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "summer-macros"
+version = "0.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fc0d4dd9175da091b28ba944a9156d8276042fbd9d17fddb53eed3f770e1556c"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.117",
+]
+
+[[package]]
 name = "summer-opendal"
-version = "0.5.0"
+version = "0.7.0"
 dependencies = [
  "anyhow",
  "log",
@@ -5540,7 +5579,7 @@ dependencies = [
  "prometheus-client",
  "schemars",
  "serde",
- "summer",
+ "summer 0.7.1",
  "summer-web",
  "tokio",
 ]
@@ -5559,8 +5598,8 @@ dependencies = [
  "schemars",
  "serde",
  "serde_json",
- "summer",
- "summer-macros",
+ "summer 0.5.1",
+ "summer-macros 0.5.2",
  "thiserror 2.0.18",
  "tokio",
  "tower 0.5.3",

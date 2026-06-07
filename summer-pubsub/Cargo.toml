@@ -1,7 +1,7 @@
 [package]
 name = "summer-pubsub"
 description = "Integrate Google Cloud Pub/Sub (google-cloud-pubsub) with summer-rs"
-version = "0.5.1"
+version = "0.7.0"
 categories = ["network-programming"]
 keywords = ["pubsub", "gcp", "google-cloud", "summer"]
 edition = "2021"
@@ -10,7 +10,7 @@ authors = ["holmofy"]
 repository = "https://github.com/spring-rs/contrib-plugins"
 
 [dependencies]
-summer = "0.5"
+summer = "0.7"
 summer-ext-macros = { path = "../summer-ext-macros", version = "0.1" }
 google-cloud-pubsub = "0.33"
 google-cloud-auth = "1.9"
@@ -25,10 +25,10 @@ async-trait = "0.1"
 bytes = "1"
 
 [dev-dependencies]
-summer-web = "0.5"
-summer-stream = "0.5"
-summer-sqlx = { version = "0.5", features = ["postgres"] }
-summer-redis = "0.5"
+summer-web = "0.7"
+summer-stream = "0.7"
+summer-sqlx = { version = "0.7", features = ["postgres"] }
+summer-redis = "0.7"
 tokio = { version = "1.47", features = ["full", "tracing"] }
 
 [[example]]
