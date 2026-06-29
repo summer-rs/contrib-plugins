@@ -43,22 +43,27 @@ is_concurrent = true
 # 在多人登录同一账号时，是否共享一个 Token
 is_share = true
 
-# Token 风格：Uuid, SimpleUuid, Random32, Random64, Random128, Jwt
+# Token 风格：Uuid, SimpleUuid, Random32, Random64, Random128, Jwt, Hash, Timestamp, Tik
 token_style = "Uuid"
 
-# Token 前缀（如 "Bearer "）
-token_prefix = "Bearer "
+# 是否启用 per-token 动态 active_timeout
+dynamic_active_timeout = false
 
-# Redis 存储前缀（仅在 `with-summer-redis` 时生效）
-# 结尾不带 `:` 也可以，summer-sa-token 会自动规范成 `demo:`
-# rewrite_storage_prefix = false 时：
-#   `sa:login:token:admin` -> `demo:sa:login:token:admin`
-# rewrite_storage_prefix = true 时：
-#   `sa:login:token:admin` -> `demo:login:token:admin`
-storage_prefix = "demo"
+# JWT 生成失败时是否回退为 UUID
+jwt_fallback_on_error = true
 
-# 当配置了 storage_prefix 时，是否重写内建的 `sa:` 根前缀
-rewrite_storage_prefix = false
+# 存储 key 前缀
+storage_key_prefix = "sa:"
+
+# 登录替换与退出行为
+max_login_count = -1
+overflow_logout_mode = "Logout"              # Logout, KickOut, Replaced
+replaced_login_exit_mode = "OldDevice"       # OldDevice, NewDevice
+replaced_range = "CurrDeviceType"            # CurrDeviceType, AllDeviceType
+right_now_create_token_session = false
+token_session_check_login = true
+logout_range = "Token"                       # Token, Account
+is_logout_keep_token_session = false
 
 # JWT 配置（仅当 token_style = "Jwt" 时需要）
 jwt_secret_key = "your-secret-key"
@@ -75,24 +80,8 @@ enable_refresh_token = false
 refresh_token_timeout = 604800  # 7 天
 ```
 
-当使用 `with-summer-redis` 时，可以通过 `storage_prefix` 为所有 Sa-Token
-Redis key 增加统一命名空间。多个应用共用同一个 Redis 实例时，这样可以避免
-key 冲突。
-
-这里也受上游 `sa-token-core` 的限制：它把逻辑存储根前缀 `sa:` 直接硬编码了，
-并且没有对外提供配置项。因此 `summer-sa-token` 只能在存储适配层对最终的
-Redis 物理 key 做“追加前缀”或“重写前缀”。
-
-如果 `storage_prefix` 结尾没有 `:`，`summer-sa-token` 会自动补上。比如
-`demo` 会被规范成 `demo:`。
-
-- `rewrite_storage_prefix = false`：
-  只是在原始 `sa:` key 前面追加一层前缀
-- `rewrite_storage_prefix = true`：
-  直接把内建的 `sa:` 根前缀重写成你配置的前缀
-
-这两种模式的 Redis 物理 key 不兼容，切换模式后，旧的登录态 / session /
-token 数据不会被继续复用。
+当使用 `with-summer-redis` 时，可以通过 `storage_key_prefix` 为 Sa-Token
+Redis key 增加统一命名空间。
 
 
 ## 快速开始

@@ -92,11 +92,8 @@ impl Plugin for SaTokenPlugin {
 impl SaTokenPlugin {
     /// Create SaTokenState from configuration
     ///
-    /// Uses SaTokenConfig::builder() from sa-token-core which supports most config fields
-    /// and automatically initializes StpUtil.
-    ///
-    /// Note: The following fields are not supported by the builder (using defaults):
-    /// - is_log, is_read_cookie, is_read_header, is_read_body
+    /// Builds the core config explicitly so every supported configuration field
+    /// is passed through.
     async fn create_state(
         app: &AppBuilder,
         config: summerSaTokenConfig,
@@ -109,41 +106,9 @@ impl SaTokenPlugin {
             config.token_name, config.timeout, config.auto_renew, config.is_concurrent, config.is_share
         );
 
-        // Use SaTokenConfig::builder() from sa-token-core which supports more config fields
-        // and automatically initializes StpUtil on build()
-        let mut builder = sa_token_core::SaTokenConfig::builder()
-            .storage(storage)
-            .token_name(config.token_name)
-            .timeout(config.timeout)
-            .active_timeout(config.active_timeout)
-            .auto_renew(config.auto_renew)
-            .is_concurrent(config.is_concurrent)
-            .is_share(config.is_share)
-            .token_style(config.token_style.into())
-            .enable_nonce(config.enable_nonce)
-            .nonce_timeout(config.nonce_timeout)
-            .enable_refresh_token(config.enable_refresh_token)
-            .refresh_token_timeout(config.refresh_token_timeout);
-
-        // Set optional fields
-        if let Some(prefix) = config.token_prefix {
-            builder = builder.token_prefix(prefix);
-        }
-        if let Some(key) = config.jwt_secret_key {
-            builder = builder.jwt_secret_key(key);
-        }
-        if let Some(algorithm) = config.jwt_algorithm {
-            builder = builder.jwt_algorithm(algorithm);
-        }
-        if let Some(issuer) = config.jwt_issuer {
-            builder = builder.jwt_issuer(issuer);
-        }
-        if let Some(audience) = config.jwt_audience {
-            builder = builder.jwt_audience(audience);
-        }
-
-        // build() creates SaTokenManager and auto-initializes StpUtil
-        let manager = builder.build();
+        let core_config: sa_token_core::SaTokenConfig = config.into();
+        let manager = sa_token_core::SaTokenManager::new(storage, core_config);
+        sa_token_core::StpUtil::init_manager(manager.clone());
 
         // Create SaTokenState from manager
         Ok(SaTokenState::from_manager(manager))
@@ -174,11 +139,7 @@ impl SaTokenPlugin {
         {
             if let Some(redis) = app.get_component::<summer_redis::Redis>() {
                 tracing::info!("Using SummerRedisStorage (reusing summer-redis connection)");
-                let storage = storage::SummerRedisStorage::new(
-                    redis,
-                    config.storage_prefix.clone(),
-                    config.rewrite_storage_prefix,
-                );
+                let storage = storage::SummerRedisStorage::new(redis);
                 Ok(std::sync::Arc::new(storage))
             } else {
                 anyhow::bail!(

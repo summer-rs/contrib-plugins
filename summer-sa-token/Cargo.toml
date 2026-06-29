@@ -1,7 +1,7 @@
 [package]
 name = "summer-sa-token"
 description = "Sa-Token authentication and authorization plugin for summer-rs"
-version = "0.7.0"
+version = "0.7.1"
 categories = ["authentication", "web-programming"]
 keywords = ["authentication", "authorization", "sa-token", "summer", "security"]
 edition = "2021"
@@ -14,10 +14,10 @@ summer = "0.7"
 summer-web = { version = "0.7", optional = true }
 summer-ext-macros = { path = "../summer-ext-macros", version = "0.1" }
 summer-redis = { version = "0.7", optional = true }
-sa-token-plugin-axum = "0.1"
-sa-token-core = "0.1"
-sa-token-adapter = "0.1"
-sa-token-storage-memory = { version = "0.1", optional = true }
+sa-token-plugin-axum = "0.1.18"
+sa-token-core = "0.1.18"
+sa-token-adapter = "0.1.18"
+sa-token-storage-memory = { version = "0.1.18", optional = true }
 serde = "1.0"
 anyhow = "1.0"
 tracing = "0.1"
