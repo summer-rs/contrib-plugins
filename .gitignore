@@ -1,1 +1,30 @@
 target/
+debug/
+
+# OS files
+.DS_Store
+
+# rustfmt backup files
+**/*.rs.bk
+
+# MSVC Windows build artifacts
+*.pdb
+
+# rust-analyzer
+rust-project.json
+
+# Editors
+.idea/
+*.iml
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+!.vscode/*.code-snippets
+
+# Generated docs and profiling output
+docs/public/
+perf*
+flamegraph.svg
+logs/

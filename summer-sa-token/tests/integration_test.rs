@@ -1,13 +1,9 @@
-//! Integration tests for summer-sa-token middleware and extractors
-//!
-//! Uses AppBuilder and Plugin pattern for proper initialization
-
+#[cfg(feature = "with-summer-redis")]
+use sa_token_adapter::storage::SaStorage;
 use sa_token_core::token::TokenValue;
+use std::sync::OnceLock;
 #[cfg(feature = "with-summer-redis")]
 use std::time::{SystemTime, UNIX_EPOCH};
-use summer::app::AppBuilder;
-use summer::async_trait;
-use summer::plugin::{ComponentRegistry, MutableComponentRegistry, Plugin};
 use summer_sa_token::sa_token_plugin_axum::{
     OptionalSaTokenExtractor, SaTokenLayer, SaTokenState, StpUtil,
 };
@@ -26,192 +22,158 @@ use summer_sa_token::storage::SummerRedisStorage;
 #[cfg(feature = "with-summer-redis")]
 use summer_redis::redis::AsyncCommands;
 
-/// Test plugin that initializes SaTokenState for testing
-struct TestSaTokenPlugin;
+fn test_state() -> SaTokenState {
+    static STATE: OnceLock<SaTokenState> = OnceLock::new();
 
-#[async_trait]
-impl Plugin for TestSaTokenPlugin {
-    async fn build(&self, app: &mut AppBuilder) {
-        let state = SaTokenState::builder()
-            .storage(std::sync::Arc::new(
-                summer_sa_token::sa_token_plugin_axum::MemoryStorage::new(),
-            ))
-            .token_name("Authorization".to_string())
-            .timeout(3600)
-            .build();
+    STATE
+        .get_or_init(|| {
+            SaTokenState::builder()
+                .storage(std::sync::Arc::new(
+                    summer_sa_token::sa_token_plugin_axum::MemoryStorage::new(),
+                ))
+                .token_name("Authorization".to_string())
+                .timeout(3600)
+                .build()
+        })
+        .clone()
+}
 
-        app.add_component(state);
-    }
-
-    fn name(&self) -> &str {
-        "TestSaTokenPlugin"
+async fn token_echo(optional_token: OptionalSaTokenExtractor) -> impl IntoResponse {
+    match optional_token.0 {
+        Some(token) => format!("Token: {}", token.as_str()),
+        None => "No token".to_string(),
     }
 }
 
-/// Combined integration test for all SaTokenState functionality
+async fn token_presence(optional_token: OptionalSaTokenExtractor) -> impl IntoResponse {
+    match optional_token.0 {
+        Some(_) => "Has token",
+        None => "No token",
+    }
+}
+
 #[tokio::test]
-async fn test_sa_token_integration() {
-    // Initialize app with test plugin
-    let mut app = AppBuilder::default();
-    TestSaTokenPlugin.build(&mut app).await;
+async fn state_can_create_auth_layer() {
+    let state = test_state();
 
-    // Get state from app
-    let state = app
-        .get_component::<SaTokenState>()
-        .expect("SaTokenState should be registered");
+    let _layer = SaTokenLayer::new(state);
+}
 
-    // =========================================================================
-    // Test 1: Layer creation
-    // =========================================================================
-    {
-        let _layer = SaTokenLayer::new(state.clone());
-    }
+#[tokio::test]
+async fn login_returns_a_valid_token_with_user_info() {
+    let state = test_state();
 
-    // =========================================================================
-    // Test 2: Login and token validation
-    // =========================================================================
-    {
-        let token = state.manager.login("test_user").await.unwrap();
-        assert!(!token.as_str().is_empty());
+    let token = state.manager.login("test_user").await.unwrap();
 
-        let is_valid = state.manager.is_valid(&token).await;
-        assert!(is_valid);
+    assert!(!token.as_str().is_empty());
+    assert!(state.manager.is_valid(&token).await);
 
-        let token_info = state.manager.get_token_info(&token).await;
-        assert!(token_info.is_ok());
-        assert_eq!(token_info.unwrap().login_id, "test_user");
-    }
+    let token_info = state.manager.get_token_info(&token).await.unwrap();
+    assert_eq!(token_info.login_id, "test_user");
+}
 
-    // =========================================================================
-    // Test 3: Logout
-    // =========================================================================
-    {
-        let token = state.manager.login("logout_user").await.unwrap();
-        assert!(state.manager.is_valid(&token).await);
+#[tokio::test]
+async fn logout_by_login_id_invalidates_existing_token() {
+    let state = test_state();
+    let token = state.manager.login("logout_user").await.unwrap();
 
-        state
-            .manager
-            .logout_by_login_id("logout_user")
-            .await
-            .unwrap();
-        assert!(!state.manager.is_valid(&token).await);
-    }
+    assert!(state.manager.is_valid(&token).await);
 
-    // =========================================================================
-    // Test 4: Multiple tokens same user
-    // =========================================================================
-    {
-        let token1 = state.manager.login("multi_user").await.unwrap();
-        let token2 = state.manager.login("multi_user").await.unwrap();
+    state
+        .manager
+        .logout_by_login_id("logout_user")
+        .await
+        .unwrap();
 
-        assert!(state.manager.is_valid(&token1).await);
-        assert!(state.manager.is_valid(&token2).await);
-    }
+    assert!(!state.manager.is_valid(&token).await);
+}
 
-    // =========================================================================
-    // Test 5: Token info
-    // =========================================================================
-    {
-        let token = state.manager.login("info_user").await.unwrap();
-        let info = state.manager.get_token_info(&token).await.unwrap();
-        assert_eq!(info.login_id, "info_user");
-    }
+#[tokio::test]
+async fn concurrent_logins_keep_each_token_valid() {
+    let state = test_state();
 
-    // =========================================================================
-    // Test 6: Invalid token
-    // =========================================================================
-    {
-        let fake_token = TokenValue::new("fake-token-12345");
-        assert!(!state.manager.is_valid(&fake_token).await);
-    }
+    let token1 = state.manager.login("multi_user").await.unwrap();
+    let token2 = state.manager.login("multi_user").await.unwrap();
 
-    // =========================================================================
-    // Test 7: Roles and permissions
-    // =========================================================================
-    {
-        let _token = state.manager.login("role_user").await.unwrap();
+    assert!(state.manager.is_valid(&token1).await);
+    assert!(state.manager.is_valid(&token2).await);
+}
 
-        StpUtil::set_roles("role_user", vec!["admin".to_string(), "user".to_string()])
-            .await
-            .unwrap();
+#[tokio::test]
+async fn invalid_token_is_rejected() {
+    let state = test_state();
+    let fake_token = TokenValue::new("fake-token-12345");
 
-        StpUtil::set_permissions(
-            "role_user",
-            vec!["user:read".to_string(), "user:write".to_string()],
+    assert!(!state.manager.is_valid(&fake_token).await);
+}
+
+#[tokio::test]
+async fn roles_and_permissions_are_stored_for_login_id() {
+    let state = test_state();
+
+    state.manager.login("role_user").await.unwrap();
+    StpUtil::set_roles("role_user", vec!["admin".to_string(), "user".to_string()])
+        .await
+        .unwrap();
+    StpUtil::set_permissions(
+        "role_user",
+        vec!["user:read".to_string(), "user:write".to_string()],
+    )
+    .await
+    .unwrap();
+
+    assert!(StpUtil::has_role("role_user", "admin").await);
+    assert!(StpUtil::has_role("role_user", "user").await);
+    assert!(!StpUtil::has_role("role_user", "superadmin").await);
+
+    assert!(StpUtil::has_permission("role_user", "user:read").await);
+    assert!(StpUtil::has_permission("role_user", "user:write").await);
+    assert!(!StpUtil::has_permission("role_user", "user:delete").await);
+
+    let roles = StpUtil::get_roles("role_user").await;
+    assert_eq!(roles.len(), 2);
+    assert!(roles.contains(&"admin".to_string()));
+
+    let permissions = StpUtil::get_permissions("role_user").await;
+    assert_eq!(permissions.len(), 2);
+    assert!(permissions.contains(&"user:read".to_string()));
+}
+
+#[tokio::test]
+async fn optional_extractor_reads_token_from_authorization_header() {
+    let state = test_state();
+    let token = state.manager.login("middleware_user").await.unwrap();
+    let app = Router::new()
+        .route("/test", get(token_echo))
+        .layer(SaTokenLayer::new(state));
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/test")
+                .header("Authorization", token.as_str())
+                .body(Body::empty())
+                .unwrap(),
         )
         .await
         .unwrap();
 
-        assert!(StpUtil::has_role("role_user", "admin").await);
-        assert!(StpUtil::has_role("role_user", "user").await);
-        assert!(!StpUtil::has_role("role_user", "superadmin").await);
+    assert_eq!(response.status(), StatusCode::OK);
+}
 
-        assert!(StpUtil::has_permission("role_user", "user:read").await);
-        assert!(StpUtil::has_permission("role_user", "user:write").await);
-        assert!(!StpUtil::has_permission("role_user", "user:delete").await);
+#[tokio::test]
+async fn optional_extractor_allows_missing_token() {
+    let state = test_state();
+    let app = Router::new()
+        .route("/test", get(token_presence))
+        .layer(SaTokenLayer::new(state));
 
-        let roles = StpUtil::get_roles("role_user").await;
-        assert_eq!(roles.len(), 2);
-        assert!(roles.contains(&"admin".to_string()));
+    let response = app
+        .oneshot(Request::builder().uri("/test").body(Body::empty()).unwrap())
+        .await
+        .unwrap();
 
-        let permissions = StpUtil::get_permissions("role_user").await;
-        assert_eq!(permissions.len(), 2);
-        assert!(permissions.contains(&"user:read".to_string()));
-    }
-
-    // =========================================================================
-    // Test 8: Middleware with valid token
-    // =========================================================================
-    {
-        let token = state.manager.login("middleware_user").await.unwrap();
-
-        async fn handler(optional_token: OptionalSaTokenExtractor) -> impl IntoResponse {
-            match optional_token.0 {
-                Some(token) => format!("Token: {}", token.as_str()),
-                None => "No token".to_string(),
-            }
-        }
-
-        let app = Router::new()
-            .route("/test", get(handler))
-            .layer(SaTokenLayer::new(state.clone()));
-
-        let response = app
-            .oneshot(
-                Request::builder()
-                    .uri("/test")
-                    .header("Authorization", token.as_str())
-                    .body(Body::empty())
-                    .unwrap(),
-            )
-            .await
-            .unwrap();
-
-        assert_eq!(response.status(), StatusCode::OK);
-    }
-
-    // =========================================================================
-    // Test 9: Middleware without token
-    // =========================================================================
-    {
-        async fn handler(optional_token: OptionalSaTokenExtractor) -> impl IntoResponse {
-            match optional_token.0 {
-                Some(_) => "Has token",
-                None => "No token",
-            }
-        }
-
-        let app = Router::new()
-            .route("/test", get(handler))
-            .layer(SaTokenLayer::new(state.clone()));
-
-        let response = app
-            .oneshot(Request::builder().uri("/test").body(Body::empty()).unwrap())
-            .await
-            .unwrap();
-
-        assert_eq!(response.status(), StatusCode::OK);
-    }
+    assert_eq!(response.status(), StatusCode::OK);
 }
 
 #[cfg(feature = "with-summer-redis")]
@@ -227,7 +189,7 @@ async fn create_redis_connection() -> Option<summer_redis::Redis> {
 }
 
 #[cfg(feature = "with-summer-redis")]
-fn unique_storage_prefix(tag: &str) -> String {
+fn unique_storage_key_prefix(tag: &str) -> String {
     let nanos = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .expect("time should be after epoch")
@@ -237,49 +199,41 @@ fn unique_storage_prefix(tag: &str) -> String {
 
 #[cfg(feature = "with-summer-redis")]
 #[tokio::test]
-async fn test_redis_storage_rewrites_prefix_for_physical_keys() {
+async fn redis_storage_uses_keys_passed_by_core() {
     let Some(mut redis) = create_redis_connection().await else {
         eprintln!("skipping: REDIS_URL is not set");
         return;
     };
-    let prefix = unique_storage_prefix("rewrite");
-    let storage = SummerRedisStorage::new(redis.clone(), Some(prefix.clone()), true);
-
-    storage.clear().await.expect("clear should succeed");
+    let prefix = unique_storage_key_prefix("generated");
+    let storage = SummerRedisStorage::new(redis.clone());
 
     storage
-        .set("sa:login:token:user1", "token-123", None)
+        .set(&format!("{prefix}:login:token:user1"), "token-123", None)
         .await
         .expect("set should succeed");
 
-    let rewritten_key = format!("{prefix}:login:token:user1");
+    let stored_key = format!("{prefix}:login:token:user1");
     let raw: Option<String> = redis
-        .get(&rewritten_key)
+        .get(&stored_key)
         .await
         .expect("prefixed key should be readable");
     assert_eq!(raw.as_deref(), Some("token-123"));
 
-    let legacy_key = format!("{prefix}:sa:login:token:user1");
-    let old_raw: Option<String> = redis
-        .get(&legacy_key)
+    redis
+        .del::<_, ()>(&stored_key)
         .await
-        .expect("old prefixed key should be readable");
-    assert!(old_raw.is_none());
-
-    storage.clear().await.expect("clear should succeed");
+        .expect("test key should be removed");
 }
 
 #[cfg(feature = "with-summer-redis")]
 #[tokio::test]
-async fn test_redis_storage_keys_and_clear_work_with_rewritten_prefix() {
+async fn redis_storage_uses_patterns_passed_by_core() {
     let Some(mut redis) = create_redis_connection().await else {
         eprintln!("skipping: REDIS_URL is not set");
         return;
     };
-    let prefix = unique_storage_prefix("keys");
-    let storage = SummerRedisStorage::new(redis.clone(), Some(prefix.clone()), true);
-
-    storage.clear().await.expect("clear should succeed");
+    let prefix = unique_storage_key_prefix("keys");
+    let storage = SummerRedisStorage::new(redis.clone());
 
     redis
         .set::<_, _, ()>(format!("{prefix}:token:one"), "a")
@@ -294,19 +248,25 @@ async fn test_redis_storage_keys_and_clear_work_with_rewritten_prefix() {
         .await
         .expect("set should succeed");
 
-    let mut keys = storage.keys("sa:*").await.expect("keys should succeed");
+    let mut keys = storage
+        .keys(&format!("{prefix}:*"))
+        .await
+        .expect("keys should succeed");
     keys.sort();
 
     assert_eq!(
         keys,
         vec![
-            "sa:refresh:token-1".to_string(),
-            "sa:session:user1".to_string(),
-            "sa:token:one".to_string()
+            format!("{prefix}:refresh:token-1"),
+            format!("{prefix}:session:user1"),
+            format!("{prefix}:token:one")
         ]
     );
 
-    storage.clear().await.expect("clear should succeed");
+    redis
+        .del::<_, ()>(&keys)
+        .await
+        .expect("test keys should be removed");
 
     let remaining: Vec<String> = redis
         .keys(format!("{prefix}:*"))
@@ -315,36 +275,70 @@ async fn test_redis_storage_keys_and_clear_work_with_rewritten_prefix() {
     assert!(remaining.is_empty());
 }
 
-mod test_config_conversion {
-    use summer_sa_token::{CoreConfig, SaTokenConfig};
+mod config_conversion {
+    use summer_sa_token::{
+        CoreConfig, LogoutMode, LogoutRange, ReplacedLoginExitMode, ReplacedRange, SaTokenConfig,
+    };
 
     #[test]
-    fn test_config_into_core_config() {
+    fn local_config_converts_to_core_config() {
         let config = SaTokenConfig {
             token_name: "TestToken".to_string(),
             timeout: 7200,
+            dynamic_active_timeout: true,
             auto_renew: true,
+            storage_key_prefix: "demo:".to_string(),
+            max_login_count: 2,
+            overflow_logout_mode: LogoutMode::KickOut,
+            replaced_login_exit_mode: ReplacedLoginExitMode::NewDevice,
+            replaced_range: ReplacedRange::AllDeviceType,
+            right_now_create_token_session: true,
+            token_session_check_login: false,
+            logout_range: LogoutRange::Account,
+            is_logout_keep_token_session: true,
             ..Default::default()
         };
 
         let core_config: CoreConfig = config.into();
         assert_eq!(core_config.token_name, "TestToken");
         assert_eq!(core_config.timeout, 7200);
+        assert!(core_config.dynamic_active_timeout);
         assert!(core_config.auto_renew);
+        assert_eq!(core_config.storage_key_prefix, "demo:");
+        assert_eq!(core_config.max_login_count, 2);
+        assert_eq!(
+            core_config.overflow_logout_mode,
+            sa_token_core::config::LogoutMode::KickOut
+        );
+        assert_eq!(
+            core_config.replaced_login_exit_mode,
+            sa_token_core::config::ReplacedLoginExitMode::NewDevice
+        );
+        assert_eq!(
+            core_config.replaced_range,
+            sa_token_core::config::ReplacedRange::AllDeviceType
+        );
+        assert!(core_config.right_now_create_token_session);
+        assert!(!core_config.token_session_check_login);
+        assert_eq!(
+            core_config.logout_range,
+            sa_token_core::config::LogoutRange::Account
+        );
+        assert!(core_config.is_logout_keep_token_session);
     }
 }
 
-mod test_path_auth_builder {
+mod path_auth_builder {
     use summer_sa_token::PathAuthBuilder;
 
     #[test]
-    fn test_path_auth_builder_creation() {
+    fn new_builder_is_not_configured() {
         let builder = PathAuthBuilder::new();
         assert!(!builder.is_configured());
     }
 
     #[test]
-    fn test_path_auth_builder_include() {
+    fn include_marks_builder_configured() {
         let builder = PathAuthBuilder::new()
             .include("/api/**")
             .include("/admin/**");
@@ -353,7 +347,7 @@ mod test_path_auth_builder {
     }
 
     #[test]
-    fn test_path_auth_builder_exclude() {
+    fn exclude_marks_builder_configured() {
         let builder = PathAuthBuilder::new()
             .include("/api/**")
             .exclude("/api/public/**")
@@ -363,14 +357,14 @@ mod test_path_auth_builder {
     }
 
     #[test]
-    fn test_path_auth_builder_include_all() {
+    fn include_all_marks_builder_configured() {
         let builder = PathAuthBuilder::new().include_all(["/api/**", "/admin/**", "/user/**"]);
 
         assert!(builder.is_configured());
     }
 
     #[test]
-    fn test_path_auth_builder_exclude_all() {
+    fn exclude_all_marks_builder_configured() {
         let builder = PathAuthBuilder::new()
             .include("/api/**")
             .exclude_all(["/api/public/**", "/api/health"]);
@@ -379,7 +373,7 @@ mod test_path_auth_builder {
     }
 
     #[test]
-    fn test_path_auth_builder_aliases() {
+    fn authenticated_and_permit_all_are_aliases() {
         let builder = PathAuthBuilder::new()
             .authenticated("/api/**")
             .permit_all("/api/public/**");
@@ -388,7 +382,7 @@ mod test_path_auth_builder {
     }
 
     #[test]
-    fn test_path_auth_builder_merge() {
+    fn merge_combines_configured_builders() {
         let builder1 = PathAuthBuilder::new().include("/api/**");
         let builder2 = PathAuthBuilder::new().include("/admin/**");
 
@@ -397,12 +391,11 @@ mod test_path_auth_builder {
     }
 
     #[test]
-    fn test_path_auth_builder_build() {
+    fn configured_builder_can_be_built() {
         let builder = PathAuthBuilder::new()
             .include("/api/**")
             .exclude("/api/public/**");
 
-        // PathAuthConfig is built successfully
         let _config = builder.build();
     }
 }

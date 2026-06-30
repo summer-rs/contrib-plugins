@@ -15,6 +15,9 @@ timeout = 86400
 # Token 最低活跃频率（秒），-1 表示不限制
 active_timeout = 3600
 
+# 是否启用 per-token 动态 active_timeout
+dynamic_active_timeout = false
+
 # 是否开启自动续签
 auto_renew = true
 
@@ -27,20 +30,20 @@ is_share = true
 # Token 风格：Uuid, SimpleUuid, Random32, Random64, Random128, Jwt, Hash, Timestamp, Tik
 token_style = "Jwt"
 
-# 是否输出操作日志 (不支持，使用默认值)
+# 是否输出操作日志
 is_log = true
 
-# 是否从 cookie 中读取 token (不支持，使用默认值)
+# 是否从 cookie 中读取 token
 is_read_cookie = false
 
-# 是否从 header 中读取 token (不支持，使用默认值)
+# 是否从 header 中读取 token
 is_read_header = true
 
-# 是否从请求体中读取 token (不支持，使用默认值)
-is_read_body = false
+# 是否从请求体中读取 token
+is_read_body = true
 
-# token 前缀
-token_prefix = "Bearer "
+# 存储 key 前缀
+storage_key_prefix = "sa:"
 
 # JWT 密钥
 jwt_secret_key = "test-secret-key-12345"
@@ -54,6 +57,9 @@ jwt_issuer = "summer-rs-test"
 # JWT 受众
 jwt_audience = "summer-rs-users"
 
+# JWT 生成失败时是否回退为 UUID
+jwt_fallback_on_error = true
+
 # 是否启用防重放攻击（nonce 机制）
 enable_nonce = true
 
@@ -65,3 +71,27 @@ enable_refresh_token = true
 
 # Refresh Token 有效期（秒）
 refresh_token_timeout = 1209600
+
+# 同一账号最大登录数量，-1 表示不限制
+max_login_count = -1
+
+# 超出 max_login_count 时的下线模式：Logout, KickOut, Replaced
+overflow_logout_mode = "Logout"
+
+# 非并发顶号时踢旧设备还是拒绝新登录：OldDevice, NewDevice
+replaced_login_exit_mode = "OldDevice"
+
+# 顶号范围：CurrDeviceType, AllDeviceType
+replaced_range = "CurrDeviceType"
+
+# 登录时是否立即创建 Token-Session
+right_now_create_token_session = false
+
+# 获取 Token-Session 时是否校验登录态
+token_session_check_login = true
+
+# 默认 logout 范围：Token, Account
+logout_range = "Token"
+
+# logout 时是否保留 Token-Session
+is_logout_keep_token_session = false

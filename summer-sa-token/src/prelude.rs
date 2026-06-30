@@ -1,6 +1,9 @@
 pub use sa_token_plugin_axum;
 
-pub use crate::config::{CoreConfig, SaTokenConfig, TokenStyle};
+pub use crate::config::{
+    CoreConfig, LogoutMode, LogoutRange, ReplacedLoginExitMode, ReplacedRange, SaTokenConfig,
+    TokenStyle,
+};
 pub use crate::configurator::{PathAuthBuilder, SaTokenAuthConfigurator, SaTokenConfigurator};
 pub use crate::custom_storage::lazy_storage;
 

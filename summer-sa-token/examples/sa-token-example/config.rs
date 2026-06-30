@@ -27,7 +27,6 @@ impl SaTokenConfigurator for SaTokenConfig {
             .exclude("/login")
             .exclude("/api/health") // Health check is public
             .exclude("/api/config") // Config check is public (for debugging)
-            .exclude("/api/init") // Create demo table (for in-memory sqlite)
     }
 
     fn configure_storage(&self, _app: &AppBuilder) -> Option<Arc<dyn SaStorage>> {
